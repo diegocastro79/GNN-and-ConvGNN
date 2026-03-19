@@ -1,7 +1,7 @@
 import pickle
 from constants.constants import DATA_PATH, MODEL_STATE_PATH, STATISTICS_PATH, PLOTS_PATH
 import pathlib
-from trainer.trainer import Trainer, HyperParameters
+from trainer.trainer import Trainer, HyperParameters, test_model
 from models.cgnn import ConvGNN
 
 
@@ -27,8 +27,8 @@ if __name__ == "__main__":
         statistics_path=STATISTICS_PATH,
         plots_path=PLOTS_PATH,
     )
-    trainer.run_epochs(trial=0, save_outcome=False, visualize=True)
-    print(f"Test accuracy: {trainer.test_model()}")
+    trainer.run_epochs(trial=0, save_outcome=True, visualize=True, verbose = True)
+    print(f"Test accuracy: {test_model(trainer.model, trainer.data):.4f}")
 
 
 

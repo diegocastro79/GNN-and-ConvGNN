@@ -27,7 +27,7 @@ class ConvLayer(nn.Module):
     def forward(self, input_args: tuple):
         x, edge_index = input_args
         if self.training and self.layer == 0 and self.drop_edges:
-            indices = random.sample(range(edge_index.shape[1]), int(0.95 * edge_index.shape[1]))
+            indices = random.sample(range(edge_index.shape[1]), int(0.95 * edge_index.shape[1])) # randomly discard 5% of connected nodes
             edge_index = edge_index[:, indices]
         emb = self.conv(x, edge_index)
         emb = F.relu(emb)

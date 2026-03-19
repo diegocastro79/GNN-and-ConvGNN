@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.optim as optim
 import torch.nn as nn
@@ -17,6 +18,14 @@ def get_num_feature_labels():
         feat_labels_dict = pickle.load(f)
     return feat_labels_dict["num_features"], feat_labels_dict["num_labels"]
 
+
+def test_model(model: ConvGNN, data):
+    model.eval()
+    with torch.no_grad():
+        logits = model(data.x, data.edge_index)
+        return global_accuracy(logits, data.y, data.test_mask)[0]
+
+
 @dataclass
 class HyperParameters:
     learning_rate: float
@@ -33,7 +42,7 @@ class Trainer(nn.Module):
             gnn: ConvGNN,
             model_estate_path: Path,
             statistics_path: Path,
-            plots_path: Path,
+            plots_path: Path | None = None,
             drop_edges: bool = False):
         super().__init__()
         self.params = params
@@ -72,7 +81,7 @@ class Trainer(nn.Module):
         self.optimizer.step()
         return loss.item()
 
-    def run_epochs(self, trial: int, save_outcome: bool = True, visualize: bool = True):
+    def run_epochs(self, trial: int, save_outcome: bool = True, visualize: bool = False, verbose: bool = False):
         self._init_model()
         self._init_optimizer()
         self.model.train()
@@ -89,10 +98,11 @@ class Trainer(nn.Module):
                     val_loss.append(entropy_loss(logits, self.y, self.data.val_mask).item())
                     acc_values.append(global_accuracy(logits, self.y, self.data.val_mask)[0])
                 self.model.train()
-                print("\n"+10*"#"+f"epoch: {epoch}"+10*"#")
-                print(f"\nTraining loss for epoch {epoch}: {train_loss[-1]}")
-                print(f"Validation loss for epoch {epoch}: {val_loss[-1]}")
-                print(f"Classification accuracy for epoch {epoch}: {acc_values[-1]}")
+                if verbose:
+                    print("\n" + 10 * "#" + f"epoch: {epoch}" + 10 * "#")
+                    print(f"\nTraining loss for epoch {epoch}: {train_loss[-1]}")
+                    print(f"Validation loss for epoch {epoch}: {val_loss[-1]}")
+                    print(f"Classification accuracy for epoch {epoch}: {acc_values[-1]}")
         if save_outcome:
             self.model.eval()
             with torch.no_grad():
@@ -110,27 +120,26 @@ class Trainer(nn.Module):
                 )
             self.model.train()
             save_upload_model_state(model=self.model, path=self.model_estate_path, trial=trial, upload=False)
-        if visualize:
-            fig, ax = plt.subplots(ncols=2)
-            ax[0].plot(range(1, len(train_loss)+1), train_loss, label="train loss")
-            ax[0].legend()
-            ax[1].plot(range(1, len(val_loss)+1), val_loss, label="validation loss")
-            ax[1].legend()
-            fig.savefig(Path(self.plots_path / f"losses_{trial}.png"))
-            plt.close(fig)
-            fig, ax = plt.subplots()
-            ax.plot(range(1, len(acc_values)+1), acc_values)
-            ax.set_title("Validation accuracy")
-            fig.savefig(Path(self.plots_path / f"val_accuracy_{trial}.png"))
-            plt.close(fig)
+        if visualize and self.plots_path is not None:
+            self.visualize(train_loss, val_loss, acc_values, trial)
         return acc_values[-1]
 
-    def test_model(self, model: ConvGNN | None = None):
-        model = self.model if model is None else model
-        model.eval()
-        with torch.no_grad():
-            logits = model(self.x, self.edge_index)
-            return global_accuracy(logits, self.y, self.data.test_mask)[0]
-
-
+    def visualize(self, train_loss, val_loss, acc_values, trial):
+        self.plots_path.mkdir(parents=True, exist_ok=True)
+        fig, ax = plt.subplots(ncols=2)
+        ax[0].plot(range(1, len(train_loss) + 1), train_loss, label="train loss")
+        ax[0].legend()
+        ax[0].set(xlabel="Epochs", ylabel="Loss")
+        x = [20*i for i in range(1, len(val_loss) + 1)]
+        ax[1].plot(x, val_loss, label="validation loss")
+        ax[1].legend()
+        ax[1].set(xlabel="Epochs")
+        fig.savefig(Path(self.plots_path / f"losses_{trial}.png"))
+        plt.close(fig)
+        fig, ax = plt.subplots()
+        ax.plot(x, acc_values)
+        ax.set_title("Validation accuracy")
+        ax.set_xlabel("Epochs")
+        fig.savefig(Path(self.plots_path / f"val_accuracy_{trial}.png"))
+        plt.close(fig)
 
