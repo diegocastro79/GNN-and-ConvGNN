@@ -31,7 +31,7 @@ class Tuner:
         self.study = optuna.create_study(direction="maximize", pruner=optuna.pruners.MedianPruner())
 
     def _set_directory_paths(self, path: Path):
-        return path if not self.settings.DropEdges else Path(path / f"drop_edges")
+        return path if not self.settings.DropEdges else Path(path / "drop_edges")
 
     @staticmethod
     def _load_data(data_path: Path):
@@ -84,7 +84,7 @@ class Tuner:
     def save_best_model(self):
         best_trial = self.study.best_trial
         params_dict =  self._get_params_dict(best_trial.params)
-        # initialize dummy model with the appropriate architecture
+        # instantiate dummy model with the appropriate architecture
         model = ConvGNN(
             dim_list=[NUM_FEATURES] + params_dict["internal_dims"],
             num_classes=NUM_LABELS,

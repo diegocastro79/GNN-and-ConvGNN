@@ -8,7 +8,7 @@ if __name__ == "__main__":
         MaxIntLayers=5,
         MaxIntDim=20,
         MinIntDim=2,
-        DropEdges=False,
+        DropEdges=True,
     )
 
     tuner = Tuner(settings)
