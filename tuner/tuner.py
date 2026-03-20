@@ -15,6 +15,7 @@ class TuningSettings:
     MaxIntLayers: int
     MinIntDim: int
     MaxIntDim: int
+    DropEdges: bool
 
     def as_dict(self):
         return asdict(self)
@@ -23,11 +24,14 @@ class TuningSettings:
 class Tuner:
     def __init__(self, settings: TuningSettings):
         self.settings = settings
-        self.model_state_path = MODEL_STATE_PATH
-        self.statistics_path = STATISTICS_PATH
+        self.model_state_path = self._set_directory_paths(MODEL_STATE_PATH)
+        self.statistics_path = self._set_directory_paths(STATISTICS_PATH)
         self._create_directories()
         self.data = self._load_data(Path(DATA_PATH / "graph_data.pkl"))
         self.study = optuna.create_study(direction="maximize", pruner=optuna.pruners.MedianPruner())
+
+    def _set_directory_paths(self, path: Path):
+        return path if not self.settings.DropEdges else Path(path / f"drop_edges")
 
     @staticmethod
     def _load_data(data_path: Path):
@@ -62,6 +66,7 @@ class Tuner:
             gnn=ConvGNN,
             model_estate_path=self.model_state_path,
             statistics_path=self.statistics_path,
+            drop_edges=self.settings.DropEdges,
         )
         try:
             metric_val = trainer.run_epochs(trial=trial.number, save_outcome=True, visualize=False, verbose = False)
@@ -73,7 +78,7 @@ class Tuner:
     def optimize(self):
         self.study.optimize(self.objective, n_trials=self.settings.NumTrials)
         self.save_best_model()
-        with open(Path("../results/tuning_settings.json"), "w+") as f:
+        with open(Path(f"../results/tuning_settings_drop_edges_{self.settings.DropEdges}.json"), "w+") as f:
             json.dump(self.settings.as_dict(), f)
 
     def save_best_model(self):
@@ -94,7 +99,7 @@ class Tuner:
         )
         # save model state as best model
         save_upload_model_state(model=model, path=self.model_state_path, trial=None, upload=False)
-        with open(Path("../results/best_training_params.json"), "w+") as f:
+        with open(Path(f"../results/best_training_params_drop_edges_{self.settings.DropEdges}.json"), "w+") as f:
             json.dump(params_dict, f)
         print(f"\nNode classification test accuracy with the best model: {test_model(model, self.data):.4f}\n")
         print(f"Best training parameters:\n {params_dict}\n")

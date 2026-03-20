@@ -67,11 +67,12 @@ def save_upload_model_state(
         path: Path,
         trial: int = None,
         upload: bool = False,
+        drop_edges: bool = False,
 ) -> ConvGNN | None:
     if trial is not None:
-        file_path = path / f"best_model_trial_{trial}.pt"
+        file_path = path / f"best_model_trial_{trial}_drop_edges_{drop_edges}.pt"
     else:
-        file_path = path / f"best_model.pt"
+        file_path = path / f"best_model_drop_edges_{drop_edges}.pt"
     if upload:
         if Path(file_path).exists():
             model.load_state_dict(torch.load(file_path, weights_only=True))

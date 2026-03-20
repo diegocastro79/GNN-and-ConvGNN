@@ -26,8 +26,9 @@ if __name__ == "__main__":
         model_estate_path=MODEL_STATE_PATH,
         statistics_path=STATISTICS_PATH,
         plots_path=PLOTS_PATH,
+        drop_edges=False,
     )
-    trainer.run_epochs(trial=0, save_outcome=True, visualize=True, verbose = True)
+    trainer.run_epochs(trial=0, save_outcome=False, visualize=True, verbose = True)
     print(f"Test accuracy: {test_model(trainer.model, trainer.data):.4f}")
 
 

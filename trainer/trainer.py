@@ -51,9 +51,14 @@ class Trainer(nn.Module):
         self.gnn = gnn
         self.model_estate_path = model_estate_path
         self.statistics_path = statistics_path
-        self.plots_path = plots_path
         self.drop_edges = drop_edges
+        self.plots_path = self._set_directory_path(plots_path)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    def _set_directory_path(self, path: Path | None):
+        if path is None:
+            return None
+        return path if not self.drop_edges else Path(path / "drop_edges")
 
     def _extract_data(self):
         self.x = self.data.x
