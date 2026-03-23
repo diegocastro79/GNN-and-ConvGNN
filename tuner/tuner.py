@@ -6,6 +6,8 @@ from trainer.trainer import Trainer, HyperParameters, test_model
 from models.cgnn import ConvGNN, save_upload_model_state
 from dataclasses import dataclass, asdict
 from constants.constants import DATA_PATH, STATISTICS_PATH, MODEL_STATE_PATH, NUM_LABELS, NUM_FEATURES
+from metrics.metrics import accracy_per_label
+
 
 @dataclass
 class TuningSettings:
@@ -102,6 +104,9 @@ class Tuner:
         with open(Path(f"../results/best_training_params_drop_edges_{self.settings.DropEdges}.json"), "w+") as f:
             json.dump(params_dict, f)
         print(f"\nNode classification test accuracy with the best model: {test_model(model, self.data):.4f}\n")
+        logits = model(self.data.x, self.data.edge_index)
+        acc_per_label = accracy_per_label(logits, self.data.y, self.data.test_mask)
+        print(f"Accuracy per label: {acc_per_label}\n")
         print(f"Best training parameters:\n {params_dict}\n")
 
     @staticmethod

@@ -13,9 +13,10 @@ def global_accuracy(logits, labels, mask):
 
 
 def accracy_per_label(logits, labels, mask):
-    num_labels_dict = {i: (1.0*torch.eq(labels[mask], i)).sum() for i in range(NUM_LABELS)}
+    true_labels = labels[mask]
+    num_labels_dict = {i: (1.0*torch.eq(true_labels, i)).sum() for i in range(NUM_LABELS)}
     pred_labels = torch.argmax(logits[mask, :], dim=1)
     return {
-        i: (((1.0*torch.eq(pred_labels, i)).sum() / num).item() if num > 0 else -1)
+        i: (((1.0*torch.eq(pred_labels[true_labels == i], i)).sum() / num).item() if num > 0 else -1)
         for i, num in num_labels_dict.items()
     }
