@@ -18,8 +18,8 @@ if __name__ == "__main__":
         betas=(0.96, 0.98),
         feat_dropout=0.5,
         num_epochs=100,
-        dims=[16],
-        heads=[8],
+        dims=[16, 10],
+        heads=[8, 4],
         att_dropout=0.1,
     )
     data = load_data(pathlib.Path(DATA_PATH / "graph_data.pkl"))

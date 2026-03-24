@@ -9,7 +9,7 @@ class GatLayer(nn.Module):
     def __init__(self, in_dim: int, out_dim: int, heads: int, att_dropout: float = 0.05, feat_dropout: float = 0.5):
         super().__init__()
         self.feat_dropout = feat_dropout
-        self.gatconv = GATConv(in_dim, out_dim, heads=heads, dropout=att_dropout, concat=False)
+        self.gatconv = GATConv(in_dim, out_dim, heads=heads, dropout=att_dropout, concat=True)
 
     def forward(self, input_args: tuple):
         x, edge_index = input_args
@@ -33,7 +33,7 @@ class GAttNN(AbstractGNN):
         att_layers = nn.ModuleList(
             [
                 GatLayer(
-                    in_dim=dim_list[i],
+                    in_dim=dim_list[i] if i==0 else dim_list[i]*heads_list[i-1],
                     out_dim=dim_list[i+1],
                     heads=heads,
                     att_dropout=gnn_args[GnnModelArgs.AttDropout],
@@ -42,7 +42,7 @@ class GAttNN(AbstractGNN):
             ]
         )
         self.att_block = nn.Sequential(*att_layers)
-        self.last_layer = nn.Linear(dim_list[-1], gnn_args[GnnModelArgs.NumClasses])
+        self.last_layer = nn.Linear(heads_list[-1]*dim_list[-1], gnn_args[GnnModelArgs.NumClasses])
 
     def forward(self, x, edge_index):
         x, _ = self.att_block((x, edge_index))
