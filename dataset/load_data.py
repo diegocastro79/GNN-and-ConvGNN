@@ -30,4 +30,6 @@ if __name__ == "__main__":
     labels = data.y[data.train_mask]
     print(f"A few training node features: {training_features[:5, :10]}")
     print(f"A few node labels: {labels[:5]}")
+    print(f"Shape of edge index: {data.edge_index.shape}")
+    print(f"edge_indices: {data.edge_index[:,:5]}")
 

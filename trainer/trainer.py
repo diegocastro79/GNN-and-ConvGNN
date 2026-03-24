@@ -2,9 +2,10 @@ import numpy as np
 import torch
 import torch.optim as optim
 import torch.nn as nn
-from models.cgnn import ConvGNN, save_upload_model_state
+from models.abstract_model import AbstractGNN
+from models.models_utils import save_upload_model_state
 from tqdm import tqdm
-from constants.constants import DATA_PATH, NUM_FEATURES, NUM_LABELS
+from constants.constants import DATA_PATH, NUM_FEATURES, NUM_LABELS, NodeUpdateMethods, GnnModelArgs
 from metrics.metrics import entropy_loss, global_accuracy, accracy_per_label
 from pathlib import Path
 from dataclasses import dataclass
@@ -19,7 +20,7 @@ def get_num_feature_labels():
     return feat_labels_dict["num_features"], feat_labels_dict["num_labels"]
 
 
-def test_model(model: ConvGNN, data):
+def test_model(model: AbstractGNN, data):
     model.eval()
     with torch.no_grad():
         logits = model(data.x, data.edge_index)
@@ -31,7 +32,9 @@ class HyperParameters:
     learning_rate: float
     betas: tuple[float, float]
     dims: list[int] # contains the intermediate layer dimensions
-    drop: float
+    heads: list[int] | None # contains the number of heads for each attention layer (if applicable)
+    feat_dropout: float
+    att_dropout: float | None
     num_epochs: int
 
 class Trainer(nn.Module):
@@ -39,7 +42,8 @@ class Trainer(nn.Module):
             self,
             params: HyperParameters,
             data,
-            gnn: ConvGNN,
+            gnn: AbstractGNN,
+            method: NodeUpdateMethods,
             model_estate_path: Path,
             statistics_path: Path,
             plots_path: Path | None = None,
@@ -49,6 +53,7 @@ class Trainer(nn.Module):
         self.data = data
         self._extract_data()
         self.gnn = gnn
+        self.method = method
         self.model_estate_path = model_estate_path
         self.statistics_path = statistics_path
         self.drop_edges = drop_edges
@@ -58,6 +63,9 @@ class Trainer(nn.Module):
     def _set_directory_path(self, path: Path | None):
         if path is None:
             return None
+        path = Path(path / self.method.value)
+        if self.method != NodeUpdateMethods.Convolution:
+            return path
         return path if not self.drop_edges else Path(path / "drop_edges")
 
     def _extract_data(self):
@@ -67,9 +75,26 @@ class Trainer(nn.Module):
 
     def _init_model(self):
         dim_list = [NUM_FEATURES] + self.params.dims
-        self.model = self.gnn(
-            dim_list=dim_list, num_classes=NUM_LABELS, drop=self.params.drop, drop_edges=self.drop_edges
-        ).to(self.device)
+        gnn_args = {
+            GnnModelArgs.DimList: dim_list,
+            GnnModelArgs.NumClasses: NUM_LABELS,
+            GnnModelArgs.FeatDropout: self.params.feat_dropout,
+        }
+        if self.method == NodeUpdateMethods.Convolution:
+            gnn_args[GnnModelArgs.DropEdges] = self.drop_edges
+        elif self.method == NodeUpdateMethods.Attention:
+            gnn_args.update(
+                {
+                    GnnModelArgs.AttHeadsList: self.params.heads,
+                    GnnModelArgs.AttDropout: self.params.att_dropout,
+                }
+            )
+        else:
+            raise NotImplementedError(
+                "Unknown node update method. Expected methods are:\n"
+                f"{NodeUpdateMethods.Convolution.value} and {NodeUpdateMethods.Attention.value}"
+            )
+        self.model = self.gnn(gnn_args).to(self.device)
 
     def _init_optimizer(self):
         self.optimizer = optim.Adam(
@@ -93,7 +118,12 @@ class Trainer(nn.Module):
         train_loss = []
         val_loss = []
         acc_values = []
-        iterable = tqdm(range(self.params.num_epochs), desc=f"Training trial {trial}, with dropping edges={self.drop_edges}")
+        iterable = tqdm(
+            range(
+                self.params.num_epochs),
+                desc=f"Training trial {trial}, for method {self.method.value}"+
+                     f", with dropping edges: {self.drop_edges}" if self.method == NodeUpdateMethods.Convolution else ""
+        )
         for epoch in iterable:
             train_loss.append(self.gradient_step())
             if epoch % 20 == 0:
