@@ -1,14 +1,15 @@
 import torch
 from pathlib import Path
+from models.abstract_model import AbstractGNN
 
 
 def save_upload_model_state(
-        model: ConvGNN,
+        model: AbstractGNN,
         path: Path,
         trial: int = None,
         upload: bool = False,
         drop_edges: bool = False,
-) -> ConvGNN | None:
+) -> AbstractGNN | None:
     if trial is not None:
         file_path = path / f"best_model_trial_{trial}.pt"
     else:
