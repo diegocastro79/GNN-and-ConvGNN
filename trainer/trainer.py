@@ -92,7 +92,7 @@ class Trainer(nn.Module):
         else:
             raise NotImplementedError(
                 "Unknown node update method. Expected methods are:\n"
-                f"{NodeUpdateMethods.Convolution.value} and {NodeUpdateMethods.Attention.value}"
+                f"{NodeUpdateMethods.Convolution.value} or {NodeUpdateMethods.Attention.value}"
             )
         self.model = self.gnn(gnn_args).to(self.device)
 
